@@ -21,14 +21,16 @@
 Alternative dashboard for Grafana alerts optimized for wall screen displays. Built with NestJS backend, Vue 3 + Vite frontend, and PrimeVue UI components with real-time WebSocket updates.
 
 
-![Grafana Alerts Dashboard Screenshot](./docs/screenshot.gif)
+![Grafana Alerts Dashboard: a rule starts firing and is highlighted](./docs/screenshot.gif)
 
 More screenshots in [docs/README.md](./docs/README.md)
 
 ## Features
 
 - **Wall Screen Optimized**: Large, clear display designed for monitoring walls
-- **Alert Status Visualization**: Color-coded alerts by state (alerting, pending, ok, paused, silenced, no_data)
+- **Grafana Look and Feel**: Grafana's colours, stat panels and state timeline, so it sits naturally next to your Grafana dashboards (dark and light themes)
+- **Alert Status Visualization**: Color-coded alerts by state (firing, pending, normal, paused, silenced, no data) with an overall status banner
+- **New Alert Highlighting**: Rules that start firing pulse and can play a notification sound
 - **Instance Identification**: Visual and auditory notification of which Grafana instance each alert belongs to
 - **Real-time Updates**: WebSocket-based live alert updates from Grafana
 - **Multiple Grafana Instances**: Monitor alerts from multiple Grafana instances simultaneously

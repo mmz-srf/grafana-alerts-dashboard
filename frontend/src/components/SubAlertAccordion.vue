@@ -1,50 +1,63 @@
 <template>
-  <Accordion :multiple="true">
-    <AccordionTab 
-      v-for="(subAlert, index) in subAlerts" 
-      :key="index"
-    >
-      <template #header>
-        <div class="sub-alert-header">
-          <i 
-            :class="[
-              'pi', 
-              subAlert.state === 'Alerting' ? 'pi-exclamation-triangle' : 'pi-check-circle', 
-              subAlert.state === 'Alerting' ? 'text-alerting' : 'text-ok'
-            ]"
-          ></i>
-          <span class="sub-alert-state">{{ subAlert.state }}</span>
-          <span class="sub-alert-value">{{ valuePrefix }}{{ subAlert.value }}</span>
-        </div>
-      </template>
-      <div :class="contentClass">
-        <div v-if="Object.keys(subAlert.labels).length > 0" :class="sectionClass">
-          <strong>Labels:</strong>
-          <div class="sub-labels">
-            <span v-for="(value, key) in subAlert.labels" :key="key" class="label-tag">
-              {{ key }}: {{ value }}
+  <div class="instances">
+    <div class="section-title">
+      Instances <span class="section-count">{{ subAlerts.length }}</span>
+    </div>
+    <Accordion :multiple="true" class="instance-accordion">
+      <AccordionTab
+        v-for="(subAlert, index) in subAlerts"
+        :key="index"
+      >
+        <template #header>
+          <div :class="['instance-header', subAlert.state === 'Alerting' ? 'state-alerting' : 'state-ok']">
+            <i class="pi pi-angle-right instance-chevron"></i>
+            <span class="instance-state">
+              <i :class="['pi', subAlert.state === 'Alerting' ? 'pi-exclamation-triangle' : 'pi-check-circle']"></i>
+              {{ subAlert.state === 'Alerting' ? 'Firing' : 'Normal' }}
+            </span>
+            <span class="instance-labels">
+              <span
+                v-for="(value, key) in summaryLabels(subAlert.labels)"
+                :key="key"
+                class="gf-label"
+              >
+                <span class="gf-label-key">{{ key }}</span><span class="gf-label-value">{{ value }}</span>
+              </span>
+            </span>
+            <span v-if="subAlert.value" class="instance-value" :title="subAlert.value">
+              {{ valuePrefix }}{{ subAlert.value }}
             </span>
           </div>
-        </div>
-        
-        <div v-if="Object.keys(subAlert.annotations).length > 0" :class="sectionClass">
-          <strong>Annotations:</strong>
-          <div class="sub-annotations">
-            <div v-for="(value, key) in subAlert.annotations" :key="key" :class="annotationClass">
-              <span class="annotation-key">{{ key }}:</span>
-              <span :class="annotationValueClass">{{ value }}</span>
+        </template>
+
+        <div class="instance-body">
+          <div v-if="Object.keys(subAlert.labels).length > 0" class="instance-section">
+            <div class="field-label">Labels</div>
+            <div class="instance-label-list">
+              <span v-for="(value, key) in subAlert.labels" :key="key" class="gf-label">
+                <span class="gf-label-key">{{ key }}</span><span class="gf-label-value">{{ value }}</span>
+              </span>
             </div>
           </div>
+
+          <div v-if="Object.keys(subAlert.annotations).length > 0" class="instance-section">
+            <div class="field-label">Annotations</div>
+            <dl class="annotation-list">
+              <template v-for="(value, key) in subAlert.annotations" :key="key">
+                <dt>{{ key }}</dt>
+                <dd>{{ value }}</dd>
+              </template>
+            </dl>
+          </div>
+
+          <div class="instance-section">
+            <div class="field-label">Active since</div>
+            <div class="field-value">{{ formatDate(subAlert.activeAt) }}</div>
+          </div>
         </div>
-        
-        <div :class="sectionClass">
-          <span v-if="detailLabelClass" :class="detailLabelClass">Active since:</span>
-          <strong v-else>Active since:</strong>
-          <span :class="detailValueClass">{{ formatDate(subAlert.activeAt) }}</span>
-        </div>
-      </div>
-    </AccordionTab>
-  </Accordion>
+      </AccordionTab>
+    </Accordion>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -55,123 +68,182 @@ import { useAlert, type SubAlert } from '../composables/useAlert'
 interface Props {
   subAlerts: SubAlert[]
   valuePrefix?: string
-  contentClass?: string
-  sectionClass?: string
-  annotationClass?: string
-  annotationValueClass?: string
-  detailLabelClass?: string
-  detailValueClass?: string
 }
 
 withDefaults(defineProps<Props>(), {
-  valuePrefix: '',
-  contentClass: 'sub-alert-content',
-  sectionClass: 'sub-section',
-  annotationClass: 'annotation-item',
-  annotationValueClass: '',
-  detailLabelClass: '',
-  detailValueClass: ''
+  valuePrefix: ''
 })
 
 const { formatDate } = useAlert()
+
+// Labels Grafana adds to every instance and that only repeat the rule itself
+const NOISY_LABELS = new Set(['alertname', 'grafana_folder', '__alert_rule_uid__', '__alert_rule_namespace_uid__'])
+
+// Show a few distinguishing labels in the collapsed header
+const summaryLabels = (labels: Record<string, string>): Record<string, string> => {
+  return Object.fromEntries(
+    Object.entries(labels)
+      .filter(([key]) => !NOISY_LABELS.has(key))
+      .slice(0, 3)
+  )
+}
 </script>
 
 <style scoped>
-.sub-alert-header {
+.instances {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.section-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gf-text-secondary);
+}
+
+.section-count {
+  margin-left: 0.25rem;
+  padding: 0 0.375rem;
+  border-radius: 8px;
+  background: var(--gf-active);
+  color: var(--gf-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.instance-accordion {
+  border: 1px solid var(--gf-border-weak);
+  border-radius: var(--gf-radius);
+  background: var(--gf-panel);
+  overflow: hidden;
+}
+
+.instance-accordion :deep(.p-accordionpanel) {
+  border: none;
+  border-bottom: 1px solid var(--gf-border-weak);
+}
+
+.instance-accordion :deep(.p-accordionpanel:last-child) {
+  border-bottom: none;
+}
+
+.instance-accordion :deep(.p-accordionheader) {
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  color: var(--gf-text);
+  font-weight: 400;
+  gap: 0.75rem;
+}
+
+.instance-accordion :deep(.p-accordionheader:hover) {
+  background: var(--gf-hover);
+}
+
+.instance-accordion :deep(.p-accordionheader-toggle-icon) {
+  display: none;
+}
+
+.instance-chevron {
+  font-size: 12px;
+  color: var(--gf-text-secondary);
+  transition: transform 0.15s;
+}
+
+.instance-accordion :deep(.p-accordionpanel-active) .instance-chevron {
+  transform: rotate(90deg);
+}
+
+.instance-accordion :deep(.p-accordioncontent-content) {
+  padding: 0 0.75rem 0.75rem 2.25rem;
+  background: transparent;
+  color: var(--gf-text);
+}
+
+.instance-header {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   width: 100%;
+  min-width: 0;
+  font-size: 13px;
 }
 
-.sub-alert-state {
-  font-weight: 600;
-  min-width: 80px;
+.instance-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 72px;
+  font-weight: 500;
+  color: var(--state-color);
+  flex-shrink: 0;
 }
 
-.sub-alert-value {
-  color: rgba(255, 255, 255, 0.7);
-  font-family: monospace;
+.instance-state .pi {
+  font-size: 12px;
 }
 
-.text-alerting {
-  color: #f44336;
+.instance-labels {
+  display: flex;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
-.text-ok {
-  color: #4caf50;
+.instance-value {
+  font-family: var(--gf-font-mono);
+  font-size: 12px;
+  color: var(--gf-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40%;
 }
 
-.sub-alert-content {
-  padding: 1rem;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
+.instance-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
-.sub-alert-details {
-  padding: 1rem;
-  border-radius: 8px;
+.instance-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
 }
 
-.sub-section,
-.detail-section {
-  margin-bottom: 1rem;
+.field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gf-text-secondary);
 }
 
-.sub-section:last-child,
-.detail-section:last-child {
-  margin-bottom: 0;
+.field-value {
+  font-size: 13px;
 }
 
-.sub-labels {
+.instance-label-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  gap: 0.25rem;
 }
 
-.label-tag {
-  background: rgba(255, 255, 255, 0.1);
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.9);
+.annotation-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0;
+  font-size: 13px;
 }
 
-.sub-annotations {
-  margin-top: 0.5rem;
+.annotation-list dt {
+  color: var(--gf-text-secondary);
 }
 
-.annotation-item,
-.annotation-row {
-  padding: 0.5rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 4px;
-  margin-bottom: 0.5rem;
-}
-
-.annotation-item:last-child,
-.annotation-row:last-child {
-  margin-bottom: 0;
-}
-
-.annotation-key {
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.7);
-  margin-right: 0.5rem;
-}
-
-.annotation-value {
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.detail-label {
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.7);
-  margin-right: 0.5rem;
-}
-
-.detail-value {
-  color: rgba(255, 255, 255, 0.9);
+.annotation-list dd {
+  margin: 0;
+  color: var(--gf-text);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 </style>

@@ -1,11 +1,23 @@
 # Screenshots
 
+All screenshots use mock data.
+
 ### Dark Theme
-![Grafana Alerts Dashboard Screenshot](./screenshot.png)
+The default view: summary stat panels and the alert rule list, styled like our Grafana dashboards.
+
+![Alert list in the dark theme](./screenshot.png)
+
+### Alert Details
+Click a rule with instances to see its 24h state history, the firing instances with their labels and annotations, and any silences.
+
+![Expanded alert rule with state timeline and instances](./screenshot-details.png)
+
 ### Light Theme
-![Grafana Alerts Dashboard Screenshot](./screenshot-light.png)
-### Alert Card View
-![Grafana Alerts Dashboard Screenshot](./screenshot-card.png)
-### Settings Page
-![Grafana Alerts Dashboard Screenshot](./screenshot-settings.png)
+![Alert list in the light theme](./screenshot-light.png)
+
+### Grid View
+![Alert rules as stat-style cards](./screenshot-card.png)
+
+### Settings
+![Display settings drawer](./screenshot-settings.png)
 <br><br><br>
