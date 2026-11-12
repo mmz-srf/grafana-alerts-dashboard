@@ -1,94 +1,61 @@
 <template>
-  <div :class="['dashboard', `theme-${effectiveTheme}`]">
-    <header class="dashboard-header">
-      <div class="stats-section">
-        <div class="stat">
-          <span class="stat-label">Showing</span>
-          <span class="stat-value">{{ sortedAlerts.length }} / {{ alerts.length }}</span>
-        </div>
-        <div class="stat alerting">
-          <span class="stat-label">Alerting</span>
-          <div class="stat-value">
-            <i class="pi pi-exclamation-triangle"></i>
-            <span>{{ alertingCount }}</span>
-          </div>
-        </div>
-        <div class="stat pending">
-          <span class="stat-label">Pending</span>
-          <div class="stat-value">
-            <i class="pi pi-clock"></i>
-            <span>{{ pendingCount }}</span>
-          </div>
-        </div>
-        <div class="stat no-data">
-          <span class="stat-label">No Data</span>
-          <div class="stat-value">
-            <i class="pi pi-question-circle"></i>
-            <span>{{ noDataCount }}</span>
-          </div>
-        </div>
-        <div class="stat paused">
-          <span class="stat-label">Paused</span>
-          <div class="stat-value">
-            <i class="pi pi-times-circle"></i>
-            <span>{{ pausedCount }}</span>
-          </div>
-        </div>
-        <div class="stat silenced">
-          <span class="stat-label">Silenced</span>
-          <div class="stat-value">
-            <i class="pi pi-volume-off"></i>
-            <span>{{ silencedCount }}</span>
-          </div>
-        </div>
-        <div class="stat ok">
-          <span class="stat-label">OK</span>
-          <div class="stat-value">
-            <i class="pi pi-check-circle"></i>
-            <span>{{ okCount }}</span>
-          </div>
-        </div>
+  <div :class="['dashboard', `theme-${effectiveTheme}`, { 'is-wall': isWallDisplayMode }]">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark"><i class="pi pi-bell"></i></span>
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <span class="crumb-muted">Alerting</span>
+          <i class="pi pi-angle-right crumb-sep"></i>
+          <span class="crumb-current">Alert overview</span>
+        </nav>
       </div>
-      <div v-if="!isWallDisplayMode" class="header-controls">
-        <div class="search-section" :class="{ 'search-open': showSearch }">
-          <input 
-            v-if="showSearch"
+
+      <div class="topbar-right">
+        <label v-if="!isWallDisplayMode" class="search-box">
+          <i class="pi pi-search"></i>
+          <input
             v-model="searchQuery"
             type="text"
-            class="search-input"
-            placeholder="Search alerts by title..."
-            @keyup.escape="showSearch = false; searchQuery = ''"
+            placeholder="Search alert rules"
+            aria-label="Search alert rules by name"
+            @keyup.escape="searchQuery = ''"
           />
-          <button 
-            class="drawer-toggle-btn"
-            @click="toggleSearch"
-            :title="showSearch ? 'Close search' : 'Search alerts'"
+          <button
+            v-if="searchQuery"
+            class="search-clear"
+            title="Clear search"
+            @click="searchQuery = ''"
           >
-            <i :class="['pi', showSearch ? 'pi-times' : 'pi-search']"></i>
+            <i class="pi pi-times"></i>
           </button>
-        </div>
-        <div class="connection-status">
-          <div class="status-line">
-            <i :class="['pi', connectionStatus.connected ? 'pi-check-circle' : 'pi-times-circle']"></i>
-            <span>{{ connectionStatus.text }}</span>
-          </div>
-          <span class="last-update">Last update: {{ lastUpdate }}</span>
-        </div>
-        <button 
-          class="drawer-toggle-btn"
-          @click="refreshAlerts"
-          :disabled="refreshing || !connectionStatus.connected"
-          title="Refresh alerts"
+        </label>
+
+        <div
+          :class="['live-indicator', connectionStatus.connected ? 'is-live' : 'is-offline']"
+          :title="connectionStatus.text"
         >
-          <i :class="['pi', 'pi-refresh', { 'pi-spin': refreshing }]"></i>
-        </button>
-        <button 
-          class="drawer-toggle-btn"
-          @click="showSidebar = true"
-          title="Open settings"
-        >
-          <i class="pi pi-cog"></i>
-        </button>
+          <span class="live-dot"></span>
+          <span class="live-text">{{ connectionStatus.connected ? 'Live' : connectionStatus.text }}</span>
+          <span class="live-time">{{ lastUpdate }}</span>
+        </div>
+
+        <template v-if="!isWallDisplayMode">
+          <button
+            class="gf-btn"
+            @click="refreshAlerts"
+            :disabled="refreshing || !connectionStatus.connected"
+            title="Refresh alerts"
+          >
+            <i :class="['pi', 'pi-refresh', { 'pi-spin': refreshing }]"></i>
+          </button>
+          <button
+            class="gf-btn"
+            @click="showSidebar = true"
+            title="Open settings"
+          >
+            <i class="pi pi-cog"></i>
+          </button>
+        </template>
       </div>
     </header>
 
@@ -108,31 +75,80 @@
       :availableLabels="availableLabels"
     />
 
-    <div class="alerts-container">
-      <div v-if="loading" class="loading">
-        <i class="pi pi-spin pi-spinner" style="font-size: 3rem"></i>
-        <p>Loading alerts...</p>
+    <main class="content">
+      <!-- Summary row: Grafana stat panels -->
+      <section class="stat-row" aria-label="Alert summary">
+        <div :class="['gf-panel', 'stat-panel', 'status-panel', `status-${overallStatus.tone}`]">
+          <div class="gf-panel-title">Overall status</div>
+          <div class="status-value">
+            <i :class="overallStatus.icon"></i>
+            <span>{{ overallStatus.text }}</span>
+          </div>
+        </div>
+
+        <div class="gf-panel stat-panel">
+          <div class="gf-panel-title">Alert rules</div>
+          <div class="stat-value">
+            {{ sortedAlerts.length }}<span class="stat-total">/ {{ alerts.length }}</span>
+          </div>
+        </div>
+
+        <div
+          v-for="stat in statPanels"
+          :key="stat.key"
+          :class="[
+            'gf-panel',
+            'stat-panel',
+            `state-${stat.key}`,
+            { 'is-hot': stat.hot && stat.value > 0, 'is-zero': stat.value === 0 }
+          ]"
+        >
+          <div class="gf-panel-title">
+            <i :class="stat.icon"></i>
+            {{ stat.label }}
+          </div>
+          <div class="stat-value">{{ stat.value }}</div>
+        </div>
+      </section>
+
+      <div class="row-title">
+        <span>Alert rules</span>
+        <span class="row-title-meta">
+          {{ sortedAlerts.length }} shown<template v-if="searchQuery"> · matching “{{ searchQuery }}”</template>
+        </span>
       </div>
 
-      <div v-else-if="error" class="error-message">
+      <div v-if="loading" class="gf-panel state-message">
+        <i class="pi pi-spin pi-spinner"></i>
+        <p>Loading alerts…</p>
+      </div>
+
+      <div v-else-if="error" class="gf-panel state-message is-error">
         <i class="pi pi-exclamation-triangle"></i>
         <p>{{ error }}</p>
       </div>
 
-      <div v-else-if="alerts.length === 0" class="no-alerts">
+      <div v-else-if="alerts.length === 0" class="gf-panel state-message is-ok">
         <i class="pi pi-check-circle"></i>
-        <p>No alerts found. All systems operational!</p>
+        <p>No alert rules found. All systems operational.</p>
       </div>
 
-      <div v-else-if="viewMode === 'compact'" class="alerts-compact">
-        <div :class="['compact-header', { 'kiosk-mode': isWallDisplayMode }]">
-          <div class="header-icon"></div>
-          <div class="header-name">Alert Name</div>
-          <div class="header-group">Rule Group</div>
-          <div class="header-totals">Alerts</div>
-          <div class="header-labels">Labels</div>
-          <div class="header-duration">Duration</div>
-          <div v-if="!isWallDisplayMode" class="header-actions"></div>
+      <div v-else-if="sortedAlerts.length === 0" class="gf-panel state-message">
+        <i class="pi pi-filter-slash"></i>
+        <p>No alert rules match the current filters.</p>
+      </div>
+
+      <div
+        v-else-if="viewMode === 'compact'"
+        :class="['gf-panel', 'alert-table', { 'no-actions': isWallDisplayMode }]"
+      >
+        <div class="table-head" role="row">
+          <div class="head-name">Alert rule</div>
+          <div class="head-group">Rule group</div>
+          <div class="head-totals">Instances</div>
+          <div class="head-labels">Labels</div>
+          <div class="head-state">State</div>
+          <div v-if="!isWallDisplayMode" class="head-actions"></div>
         </div>
         <AlertRow
           v-for="alert in sortedAlerts"
@@ -156,12 +172,12 @@
           :isNew="highlightDuration > 0 && newAlertIds.has(alert.id)"
         />
       </div>
-    </div>
+    </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, watchEffect, onMounted, onUnmounted } from 'vue'
 import AlertCard from './components/AlertCard.vue'
 import AlertRow from './components/AlertRow.vue'
 import SettingsSidebar from './components/SettingsSidebar.vue'
@@ -243,8 +259,8 @@ const newAlertIds = ref<Set<number>>(new Set())
 const previousAlertStates = ref<Map<number, string>>(new Map())
 const loading = ref(true)
 const error = ref<string | null>(null)
-const lastUpdate = ref('Never')
-const connectionStatus = ref({ connected: false, text: 'Connecting...' })
+const lastUpdate = ref('—')
+const connectionStatus = ref({ connected: false, text: 'Connecting…' })
 const viewMode = ref<'compact' | 'grid'>(savedSettings.viewMode)
 const selectedStates = ref<string[]>(savedSettings.selectedStates)
 const selectedInstances = ref<string[]>(savedSettings.selectedInstances)
@@ -259,7 +275,6 @@ const notificationSound = ref(savedSettings.notificationSound)
 const notificationVolume = ref(savedSettings.notificationVolume)
 const notificationAudio = ref<HTMLAudioElement | null>(null)
 const searchQuery = ref('')
-const showSearch = ref(false)
 
 const { isWallDisplayMode } = useFullscreenDetection()
 
@@ -277,14 +292,13 @@ const effectiveTheme = computed(() => {
   return theme.value
 })
 
-let socket: Socket | null = null
+// The theme lives on <html> so the design tokens and PrimeVue's dark mode
+// also reach portaled overlays (settings drawer, dropdowns).
+watchEffect(() => {
+  document.documentElement.classList.toggle('dark', effectiveTheme.value === 'dark')
+})
 
-const toggleSearch = () => {
-  showSearch.value = !showSearch.value
-  if (!showSearch.value) {
-    searchQuery.value = ''
-  }
-}
+let socket: Socket | null = null
 
 const refreshAlerts = () => {
   if (socket && connectionStatus.value.connected) {
@@ -320,7 +334,7 @@ const availableLabels = computed(() => {
 
 const sortedAlerts = computed(() => {
   const stateOrder = { alerting: 0, pending: 1, no_data: 2, paused: 3, silenced: 4, ok: 5 }
-  
+
   let filtered = [...alerts.value]
     .filter(alert => {
       // Show silenced alerts if 'silenced' is selected
@@ -353,7 +367,7 @@ const sortedAlerts = computed(() => {
     .sort((a, b) => {
       const aOrder = stateOrder[a.state] ?? 99
       const bOrder = stateOrder[b.state] ?? 99
-      
+
       // Primary sort: by severity/state
       if (aOrder !== bOrder) {
         return aOrder - bOrder
@@ -372,6 +386,34 @@ const noDataCount = computed(() => alerts.value.filter(a => a.state === 'no_data
 const pausedCount = computed(() => alerts.value.filter(a => a.state === 'paused').length)
 const silencedCount = computed(() => alerts.value.filter(a => a.isSilenced).length)
 const okCount = computed(() => alerts.value.filter(a => a.state === 'ok').length)
+
+// `hot` stats switch to Grafana's "background" colour mode when non-zero,
+// so a firing alert is visible from across the room.
+const statPanels = computed(() => [
+  { key: 'alerting', label: 'Firing', icon: 'pi pi-exclamation-triangle', value: alertingCount.value, hot: true },
+  { key: 'pending', label: 'Pending', icon: 'pi pi-clock', value: pendingCount.value, hot: true },
+  { key: 'no_data', label: 'No data', icon: 'pi pi-question-circle', value: noDataCount.value, hot: false },
+  { key: 'paused', label: 'Paused', icon: 'pi pi-pause-circle', value: pausedCount.value, hot: false },
+  { key: 'silenced', label: 'Silenced', icon: 'pi pi-volume-off', value: silencedCount.value, hot: false },
+  { key: 'ok', label: 'Normal', icon: 'pi pi-check-circle', value: okCount.value, hot: false },
+])
+
+const overallStatus = computed(() => {
+  if (!connectionStatus.value.connected && !loading.value) {
+    return { tone: 'offline', icon: 'pi pi-wifi', text: 'Disconnected' }
+  }
+  if (alertingCount.value > 0) {
+    return {
+      tone: 'alerting',
+      icon: 'pi pi-exclamation-triangle',
+      text: `${alertingCount.value} firing`
+    }
+  }
+  if (pendingCount.value > 0) {
+    return { tone: 'pending', icon: 'pi pi-clock', text: `${pendingCount.value} pending` }
+  }
+  return { tone: 'ok', icon: 'pi pi-check-circle', text: 'All OK' }
+})
 
 const updateLastUpdate = () => {
   const now = new Date()
@@ -407,11 +449,11 @@ onMounted(() => {
     notificationAudio.value = new Audio(`/${notificationSound.value}`)
     notificationAudio.value.volume = notificationVolume.value
   }
-  
+
   // In production (Docker), backend is on same host via nginx proxy
   // In development, use VITE_BACKEND_URL or localhost:3001
   const backendUrl = import.meta.env.PROD ? '' : (import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001')
-  
+
   socket = io(backendUrl)
 
   socket.on('connect', () => {
@@ -427,7 +469,7 @@ onMounted(() => {
   socket.on('defaultSettings', (settings: AppSettings) => {
     console.log('Received default settings from backend:', settings)
     backendDefaults.value = settings
-    
+
     // Only apply if no cookie exists (first-time user)
     const hasCookie = getCookie('alertsSettings')
     if (!hasCookie) {
@@ -438,17 +480,17 @@ onMounted(() => {
 
   socket.on('alerts', (data: GrafanaAlert[]) => {
     console.log('Received alerts:', data.length, 'highlightDuration:', highlightDuration.value)
-    
+
     data.forEach(alert => {
       const previousState = previousAlertStates.value.get(alert.id)
-      
+
       // Mark as new if state changed to alerting/pending (not on first load)
-      if (previousState && 
-          previousState !== alert.state && 
+      if (previousState &&
+          previousState !== alert.state &&
           (alert.state === 'alerting' || alert.state === 'pending')) {
         console.log('New alert detected:', alert.name, 'old state:', previousState, 'new state:', alert.state)
         newAlertIds.value.add(alert.id)
-        
+
         // Play notification sound
         if (notificationAudio.value && notificationSound.value && highlightDuration.value > 0) {
           notificationAudio.value.currentTime = 0
@@ -456,7 +498,7 @@ onMounted(() => {
             console.log('Could not play notification sound:', err)
           })
         }
-        
+
         // Remove from new alerts after configured duration (in milliseconds)
         if (highlightDuration.value > 0) {
           setTimeout(() => {
@@ -465,12 +507,12 @@ onMounted(() => {
           }, highlightDuration.value * 1000)
         }
       }
-      
+
       previousAlertStates.value.set(alert.id, alert.state)
     })
-    
+
     console.log('New alert IDs:', Array.from(newAlertIds.value))
-    
+
     alerts.value = data
     loading.value = false
     error.value = null
@@ -497,378 +539,442 @@ onUnmounted(() => {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  transition: background 0.3s, color 0.3s;
+  background: var(--gf-canvas);
+  color: var(--gf-text);
 }
 
-/* Dark theme (default) */
-.dashboard.theme-dark {
-  background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
-  color: #fff;
-}
-
-.dashboard.theme-dark .dashboard-header {
-  background: rgba(0, 0, 0, 0.3);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
-}
-
-/* Light theme */
-.dashboard.theme-light {
-  background: linear-gradient(135deg, #f0f2f5 0%, #e1e5eb 100%);
-  color: #1a1a1a;
-}
-
-.dashboard.theme-light .dashboard-header {
-  background: rgba(255, 255, 255, 0.9);
-  border-bottom: 2px solid rgba(0, 0, 0, 0.12);
-}
-
-.dashboard.theme-light .stat-label {
-  color: #555;
-}
-
-.dashboard.theme-light .stat-value {
-  color: #1a1a1a;
-}
-
-.dashboard.theme-light .connection-status {
-  color: #555;
-}
-
-.dashboard.theme-light .last-update {
-  color: #777;
-}
-
-.dashboard.theme-light .drawer-toggle-btn {
-  background: rgba(0, 0, 0, 0.08);
-  color: #555;
-}
-
-.dashboard.theme-light .drawer-toggle-btn:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.12);
-  color: #1a1a1a;
-}
-
-.dashboard.theme-light .search-input {
-  border-color: rgba(0, 0, 0, 0.2);
-  background: rgba(255, 255, 255, 0.6);
-  color: #1a1a1a;
-}
-
-.dashboard.theme-light .search-input:focus {
-  border-color: rgba(0, 0, 0, 0.4);
-  background: rgba(255, 255, 255, 0.9);
-}
-
-.dashboard.theme-light .search-input::placeholder {
-  color: rgba(0, 0, 0, 0.4);
-}
-
-.dashboard.theme-light .loading,
-.dashboard.theme-light .error-message,
-.dashboard.theme-light .no-alerts {
-  color: #1a1a1a;
-}
-
-.dashboard.theme-light .compact-header {
-  background: rgba(0, 0, 0, 0.08);
-  border-bottom: 2px solid rgba(0, 0, 0, 0.12);
-  color: #555;
-  font-weight: 600;
-}
-
-.dashboard-header {
-  padding: 1.5rem 2rem;
+/* ---------- Top bar (Grafana nav bar) ---------- */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1.5rem;
+  gap: 1rem;
+  height: 48px;
+  padding: 0 1rem;
+  background: var(--gf-panel);
+  border-bottom: 1px solid var(--gf-border-weak);
 }
 
-.stats-section {
-  display: flex;
-  gap: 2rem;
-  align-items: center;
-}
-
-.header-controls {
+.brand {
   display: flex;
   align-items: center;
-  gap: 2rem;
+  gap: 0.75rem;
+  min-width: 0;
 }
 
-.search-section {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.search-input {
-  padding: 0.5rem 1rem;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
-  font-size: 1rem;
-  outline: none;
-  transition: all 0.2s;
-  width: 250px;
-}
-
-.search-input:focus {
-  border-color: rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.search-input::placeholder {
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.drawer-toggle-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: none;
-  color: #aaa;
-  cursor: pointer;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  transition: all 0.2s;
-  display: flex;
+.brand-mark {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--gf-radius);
+  background: linear-gradient(135deg, #f05a28 0%, #fbca0a 100%);
+  color: #111217;
+  flex-shrink: 0;
 }
 
-.drawer-toggle-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+.brand-mark .pi {
+  font-size: 14px;
+  font-weight: 700;
 }
 
-.drawer-toggle-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.connection-status {
+.breadcrumb {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.25rem;
-  font-size: 1rem;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 14px;
+  white-space: nowrap;
+  min-width: 0;
 }
 
-.status-line {
+.crumb-muted {
+  color: var(--gf-text-secondary);
+}
+
+.crumb-sep {
+  font-size: 12px;
+  color: var(--gf-text-disabled);
+}
+
+.crumb-current {
+  font-weight: 500;
+  color: var(--gf-text);
+}
+
+.topbar-right {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.connection-status .pi-check-circle {
-  color: #4caf50;
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 32px;
+  width: 280px;
+  padding: 0 0.5rem;
+  background: var(--gf-canvas);
+  border: 1px solid var(--gf-border-medium);
+  border-radius: var(--gf-radius-sm);
+  color: var(--gf-text-secondary);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  cursor: text;
 }
 
-.connection-status .pi-times-circle {
-  color: #f44336;
+.search-box:hover {
+  border-color: var(--gf-border-strong);
 }
 
-.last-update {
-  font-size: 0.75rem;
-  color: #888;
+.search-box:focus-within {
+  border-color: var(--gf-primary);
+  box-shadow: 0 0 0 1px var(--gf-primary);
 }
 
-.alerts-container {
+.search-box > .pi-search {
+  font-size: 13px;
+}
+
+.search-box input {
   flex: 1;
-  overflow-y: auto;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--gf-text);
+  font: inherit;
+  font-size: 14px;
 }
 
-.loading,
-.error-message,
-.no-alerts {
+.search-box input::placeholder {
+  color: var(--gf-text-disabled);
+}
+
+.search-clear {
+  display: inline-flex;
+  padding: 2px;
+  background: none;
+  border: none;
+  color: var(--gf-text-secondary);
+  cursor: pointer;
+}
+
+.search-clear:hover {
+  color: var(--gf-text);
+}
+
+.search-clear .pi {
+  font-size: 11px;
+}
+
+.live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 32px;
+  padding: 0 0.75rem;
+  font-size: 12px;
+  color: var(--gf-text-secondary);
+  border: 1px solid var(--gf-border-weak);
+  border-radius: var(--gf-radius-sm);
+  white-space: nowrap;
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gf-red);
+}
+
+.is-live .live-dot {
+  background: var(--gf-green);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--gf-green) 60%, transparent);
+  animation: live-pulse 2s ease-out infinite;
+}
+
+.live-text {
+  font-weight: 500;
+  color: var(--gf-text);
+}
+
+.is-offline .live-text {
+  color: var(--gf-red);
+}
+
+.live-time {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes live-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gf-green) 60%, transparent); }
+  70% { box-shadow: 0 0 0 6px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* ---------- Content ---------- */
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem 1rem;
+}
+
+/* ---------- Stat panels ---------- */
+.stat-row {
+  display: grid;
+  grid-template-columns: minmax(200px, 1.6fr) repeat(7, minmax(110px, 1fr));
+  gap: 0.5rem;
+}
+
+.stat-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 96px;
+  padding: 0.625rem 0.75rem 0.75rem;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-value {
+  font-size: clamp(1.75rem, 2.4vw, 2.75rem);
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--state-color, var(--gf-text));
+  white-space: nowrap;
+}
+
+.stat-total {
+  margin-left: 0.25em;
+  font-size: 0.5em;
+  color: var(--gf-text-secondary);
+}
+
+/* Zero firing / pending / no-data is good news: show it green like Grafana thresholds */
+.stat-panel.is-zero.state-alerting .stat-value,
+.stat-panel.is-zero.state-pending .stat-value,
+.stat-panel.is-zero.state-no_data .stat-value {
+  color: var(--gf-green);
+}
+
+.stat-panel.is-zero.state-paused .stat-value,
+.stat-panel.is-zero.state-silenced .stat-value {
+  color: var(--gf-text-disabled);
+}
+
+/* Background colour mode (Grafana stat "Background gradient") */
+.stat-panel.is-hot {
+  background: linear-gradient(
+    120deg,
+    var(--state-color) 0%,
+    color-mix(in srgb, var(--state-color) 78%, #000) 100%
+  );
+  border-color: transparent;
+}
+
+.stat-panel.is-hot .gf-panel-title,
+.stat-panel.is-hot .gf-panel-title .pi,
+.stat-panel.is-hot .stat-value {
+  color: #fff;
+}
+
+/* Overall status: the "All nodes OK" banner from our cluster boards */
+.status-panel .status-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6em;
+  flex: 1;
+  padding: 0.25rem 0.5rem;
+  font-size: clamp(1.25rem, 1.9vw, 2.1rem);
+  font-weight: 500;
+  line-height: 1.1;
+  color: #fff;
+  border-radius: var(--gf-radius-sm);
+  background: var(--gf-green);
+  text-align: center;
+}
+
+.status-panel .status-value .pi {
+  font-size: 0.8em;
+}
+
+.status-alerting .status-value {
+  background: var(--gf-red);
+  animation: status-glow 2s ease-in-out infinite;
+}
+
+.status-pending .status-value {
+  background: var(--gf-orange);
+}
+
+.status-offline .status-value {
+  background: var(--gf-gray);
+}
+
+:root:not(.dark) .status-panel .status-value {
+  color: #fff;
+}
+
+@keyframes status-glow {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.15); }
+}
+
+/* ---------- Row title (collapsible-row look) ---------- */
+.row-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.5rem 0.25rem 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gf-text);
+}
+
+.row-title-meta {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--gf-text-secondary);
+}
+
+/* ---------- Messages ---------- */
+.state-message {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 400px;
+  gap: 0.75rem;
+  min-height: 320px;
+  color: var(--gf-text-secondary);
+}
+
+.state-message .pi {
+  font-size: 2.5rem;
+}
+
+.state-message.is-error {
+  color: var(--gf-red);
+}
+
+.state-message.is-ok {
+  color: var(--gf-green);
+}
+
+/* ---------- Compact table ---------- */
+.alert-table {
+  --cols: minmax(0, 1fr) minmax(0, 220px) 120px minmax(0, 360px) 170px 44px;
+  overflow: hidden;
+}
+
+.alert-table.no-actions {
+  --cols: minmax(0, 1fr) minmax(0, 220px) 120px minmax(0, 360px) 170px;
+}
+
+.table-head {
+  display: grid;
+  grid-template-columns: var(--cols);
   gap: 1rem;
-}
-
-.error-message {
-  color: #f44336;
-}
-
-.error-message i {
-  font-size: 3rem;
-}
-
-.no-alerts {
-  color: #4caf50;
-}
-
-.no-alerts i {
-  font-size: 3rem;
-}
-
-.alerts-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 1.5rem;
-  margin: 1.0rem;
-}
-
-.alerts-compact {
-  max-width: 100%;
-}
-
-.compact-header {
-  display: grid;
-  grid-template-columns: 50px 1fr 200px 80px 300px 100px 60px;
   align-items: center;
-  padding: 1rem 1.5rem;
-  background: rgba(255, 255, 255, 0.08);
-  font-weight: 600;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #aaa;
-  gap: 1rem;
-  margin-bottom: 1px;
+  padding: 0.5rem 1rem 0.5rem calc(1rem + 3px);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gf-primary-text);
+  border-bottom: 1px solid var(--gf-border-weak);
+  background: var(--gf-panel);
 }
 
-.compact-header.kiosk-mode {
-  grid-template-columns: 50px 1fr 200px 80px 300px 100px;
-}
-
-.compact-header > div {
+.table-head > div {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.header-actions {
-  text-align: center;
-}
-
-.header-duration {
+.head-state {
   text-align: right;
 }
 
-@media (max-width: 1024px) {
-  .compact-header {
-    grid-template-columns: 40px 1fr 80px 80px 50px;
-  }
-  
-  .header-group,
-  .header-labels {
-    display: none;
-  }
-}
-
-@media (max-width: 768px) {
-  .compact-header {
-    grid-template-columns: 40px 1fr 50px;
-  }
-  
-  .header-totals,
-  .header-duration {
-    display: none;
-  }
-}
-
-.stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.stat-label {
-  font-size: 0.75rem;
-  color: #aaa;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.stat-value {
-  font-size: 1.5rem;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
+/* ---------- Grid ---------- */
+.alerts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: 0.5rem;
 }
 
-.stat-value i {
-  font-size: 1.2rem;
+/* ---------- Responsive ---------- */
+@media (max-width: 1400px) {
+  .stat-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
-.stat.alerting .stat-value {
-  color: #f44336;
-}
+@media (max-width: 1024px) {
+  .alert-table,
+  .alert-table.no-actions {
+    --cols: minmax(0, 1fr) 100px 150px 44px;
+  }
 
-.stat.alerting .stat-value i {
-  color: #f44336;
-}
+  .alert-table.no-actions {
+    --cols: minmax(0, 1fr) 100px 150px;
+  }
 
-.stat.pending .stat-value {
-  color: #ff9800;
-}
+  .head-group,
+  .head-labels {
+    display: none;
+  }
 
-.stat.pending .stat-value i {
-  color: #ff9800;
-}
-
-.stat.no-data .stat-value {
-  color: #2196f3;
-}
-
-.stat.no-data .stat-value i {
-  color: #2196f3;
-}
-
-.stat.paused .stat-value {
-  color: #9e9e9e;
-}
-
-.stat.paused .stat-value i {
-  color: #9e9e9e;
-}
-
-.stat.silenced .stat-value {
-  color: #757575;
-}
-
-.stat.silenced .stat-value i {
-  color: #757575;
-}
-
-.stat.ok .stat-value {
-  color: #4caf50;
-}
-
-.stat.ok .stat-value i {
-  color: #4caf50;
+  .search-box {
+    width: 200px;
+  }
 }
 
 @media (max-width: 768px) {
-  .dashboard-header {
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .stats-section {
-    width: 100%;
-    justify-content: center;
-    gap: 1rem;
+  .topbar {
+    height: auto;
     flex-wrap: wrap;
+    padding: 0.5rem 1rem;
   }
 
-  .header-controls {
+  .topbar-right {
+    flex-wrap: wrap;
     width: 100%;
-    flex-direction: row;
-    justify-content: space-between;
   }
-  
-  .connection-status {
-    width: 100%;
-    align-items: center;
+
+  .search-box {
+    flex: 1;
+    width: auto;
+  }
+
+  .stat-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .status-panel {
+    grid-column: 1 / -1;
+  }
+
+  .alert-table,
+  .alert-table.no-actions {
+    --cols: minmax(0, 1fr) 44px;
+  }
+
+  .alert-table.no-actions {
+    --cols: minmax(0, 1fr);
+  }
+
+  .head-totals,
+  .head-state {
+    display: none;
   }
 
   .alerts-grid {
@@ -876,165 +982,3 @@ onUnmounted(() => {
   }
 }
 </style>
-
-<style>
-/* Global light theme overrides for child components */
-.theme-light .alert-row {
-  background: rgba(0, 0, 0, 0.02);
-  color: #1a1a1a;
-}
-
-.theme-light .alert-row:hover {
-  background: rgba(0, 0, 0, 0.04);
-}
-
-.theme-light .alert-name,
-.theme-light .alert-group,
-.theme-light .alert-duration {
-  color: #1a1a1a;
-}
-
-.theme-light .alert-group {
-  color: #555;
-}
-
-.theme-light .alert-duration {
-  color: #666;
-}
-
-.theme-light .label-tag {
-  background: rgba(25, 118, 210, 0.2);
-  color: #0d47a1;
-  border-color: rgba(25, 118, 210, 0.5);
-  font-weight: 600;
-}
-
-.theme-light .instance-badge {
-  background: rgba(123, 31, 162, 0.2);
-  color: #6a1b9a;
-  border-color: rgba(123, 31, 162, 0.5);
-  font-weight: 600;
-}
-
-.theme-light .view-link {
-  color: #1565c0;
-}
-
-.theme-light .view-link:hover {
-  color: #0d47a1;
-  background: rgba(25, 118, 210, 0.15);
-}
-
-.theme-light .alert-card {
-  background: rgba(255, 255, 255, 0.8);
-  border-color: rgba(0, 0, 0, 0.15);
-  color: #1a1a1a;
-}
-
-.theme-light .alert-card:hover {
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-}
-
-.theme-light .alert-title h3 {
-  color: #1a1a1a;
-}
-
-.theme-light .detail-label {
-  color: #555;
-}
-
-.theme-light .detail-value {
-  color: #1a1a1a;
-}
-
-.theme-light .detail-row {
-  border-bottom-color: rgba(0, 0, 0, 0.12);
-}
-
-.theme-light .alert-footer {
-  border-top-color: rgba(0, 0, 0, 0.12);
-}
-
-/* PrimeVue Accordion styling for dark theme */
-.theme-dark .p-accordion-header-link {
-  background: var(--p-surface-800) !important;
-  color: var(--p-text-color) !important;
-  border-color: var(--p-surface-border) !important;
-}
-
-.theme-dark .p-accordion-header:not(.p-disabled) .p-accordion-header-link:hover {
-  background: var(--p-surface-700) !important;
-}
-
-.theme-dark .p-accordion-header:not(.p-disabled).p-highlight .p-accordion-header-link {
-  background: var(--p-surface-700) !important;
-}
-
-.theme-dark .p-accordion-content {
-  background: var(--p-surface-900) !important;
-  color: var(--p-text-color) !important;
-  border-color: var(--p-surface-border) !important;
-}
-
-/* PrimeVue Accordion styling for light theme */
-.theme-light .p-accordion-header-link {
-  background: var(--p-surface-50) !important;
-  color: var(--p-text-color) !important;
-  border-color: var(--p-surface-border) !important;
-}
-
-.theme-light .p-accordion-header:not(.p-disabled) .p-accordion-header-link:hover {
-  background: var(--p-surface-100) !important;
-}
-
-.theme-light .p-accordion-header:not(.p-disabled).p-highlight .p-accordion-header-link {
-  background: var(--p-surface-100) !important;
-}
-
-.theme-light .p-accordion-content {
-  background: var(--p-surface-0) !important;
-  color: var(--p-text-color) !important;
-  border-color: var(--p-surface-border) !important;
-}
-
-/* Light theme for subalert content */
-.theme-light .sub-alert-content {
-  background: rgba(0, 0, 0, 0.02);
-}
-
-.theme-light .sub-alert-value {
-  color: #555;
-}
-
-.theme-light .annotation-item,
-.theme-light .annotation-row {
-  background: rgba(0, 0, 0, 0.03);
-}
-
-.theme-light .annotation-key {
-  color: #555;
-}
-
-.theme-light .annotation-value {
-  color: #1a1a1a;
-}
-
-/* Light theme for timeline */
-.theme-light .timeline-container {
-  background: rgba(0, 0, 0, 0.02);
-}
-
-.theme-light .timeline-bar {
-  background: rgba(0, 0, 0, 0.06);
-}
-
-.theme-light .timeline-labels {
-  color: #666;
-}
-
-.theme-light .timeline-loading {
-  color: #666;
-}
-</style>
-

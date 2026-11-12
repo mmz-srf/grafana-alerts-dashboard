@@ -1,222 +1,223 @@
 <template>
-  <Sidebar v-model:visible="isVisible" position="right" header="Settings">
+  <Drawer
+    v-model:visible="isVisible"
+    position="right"
+    class="settings-drawer"
+    :pt="{ header: { class: 'settings-drawer-header' } }"
+  >
+    <template #header>
+      <div class="drawer-heading">
+        <span class="drawer-title">Display settings</span>
+        <span class="drawer-subtitle">Saved in this browser when the panel closes</span>
+      </div>
+    </template>
+
     <div class="drawer-content">
-      <div class="drawer-section">
-        <h3 class="drawer-section-title">Filter by State</h3>
-        <MultiSelect
-          id="state-filter"
-          :modelValue="selectedStates"
-          @update:modelValue="$emit('update:selectedStates', $event)"
-          :options="stateOptions"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="Select states"
-          :maxSelectedLabels="3"
-          class="state-filter"
-        >
-          <template #option="slotProps">
-            <div class="filter-option">
-              <i :class="slotProps.option.icon" :style="{ color: slotProps.option.color }"></i>
-              <span>{{ slotProps.option.label }}</span>
-            </div>
-          </template>
-        </MultiSelect>
-      </div>
+      <section class="drawer-group">
+        <h3 class="group-title">Filters</h3>
 
-      <div class="drawer-section" v-if="availableInstances.length > 0">
-        <h3 class="drawer-section-title">Filter by Instance</h3>
-        <MultiSelect
-          id="instance-filter"
-          :modelValue="selectedInstances"
-          @update:modelValue="$emit('update:selectedInstances', $event)"
-          :options="availableInstances"
-          placeholder="All instances"
-          :maxSelectedLabels="3"
-          class="instance-filter"
-        >
-          <template #option="slotProps">
-            <div class="filter-option">
-              <i class="pi pi-server" style="color: #ce93d8"></i>
-              <span>{{ slotProps.option }}</span>
-            </div>
-          </template>
-        </MultiSelect>
-      </div>
+        <div class="field">
+          <label class="field-label" for="state-filter">State</label>
+          <MultiSelect
+            inputId="state-filter"
+            :modelValue="selectedStates"
+            @update:modelValue="$emit('update:selectedStates', $event)"
+            :options="stateOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Select states"
+            :maxSelectedLabels="3"
+            class="field-input"
+          >
+            <template #option="slotProps">
+              <div class="filter-option">
+                <i :class="slotProps.option.icon" :style="{ color: slotProps.option.color }"></i>
+                <span>{{ slotProps.option.label }}</span>
+              </div>
+            </template>
+          </MultiSelect>
+        </div>
 
-      <div class="drawer-section" v-if="availableLabels.length > 0">
-        <h3 class="drawer-section-title">Filter by Labels</h3>
-        <MultiSelect
-          id="label-filter"
-          :modelValue="selectedLabels"
-          @update:modelValue="$emit('update:selectedLabels', $event)"
-          :options="availableLabels"
-          placeholder="All labels"
-          display="chip"
-          :maxSelectedLabels="3"
-          class="label-filter"
-        >
-          <template #option="slotProps">
-            <div class="filter-option">
-              <i class="pi pi-tag" style="color: #64b5f6"></i>
-              <span>{{ slotProps.option }}</span>
-            </div>
-          </template>
-        </MultiSelect>
-      </div>
+        <div class="field" v-if="availableInstances.length > 0">
+          <label class="field-label" for="instance-filter">Grafana instance</label>
+          <MultiSelect
+            inputId="instance-filter"
+            :modelValue="selectedInstances"
+            @update:modelValue="$emit('update:selectedInstances', $event)"
+            :options="availableInstances"
+            placeholder="All instances"
+            :maxSelectedLabels="3"
+            class="field-input"
+          >
+            <template #option="slotProps">
+              <div class="filter-option">
+                <i class="pi pi-server" style="color: var(--gf-purple)"></i>
+                <span>{{ slotProps.option }}</span>
+              </div>
+            </template>
+          </MultiSelect>
+        </div>
 
-      <div class="drawer-section">
-        <h3 class="drawer-section-title">Text Size</h3>
-        <div class="size-control">
-          <i class="pi pi-search-minus"></i>
-          <input 
-            type="range" 
+        <div class="field" v-if="availableLabels.length > 0">
+          <label class="field-label" for="label-filter">Labels</label>
+          <MultiSelect
+            inputId="label-filter"
+            :modelValue="selectedLabels"
+            @update:modelValue="$emit('update:selectedLabels', $event)"
+            :options="availableLabels"
+            placeholder="All labels"
+            display="chip"
+            filter
+            :maxSelectedLabels="3"
+            class="field-input"
+          >
+            <template #option="slotProps">
+              <div class="filter-option">
+                <i class="pi pi-tag" style="color: var(--gf-blue)"></i>
+                <span>{{ slotProps.option }}</span>
+              </div>
+            </template>
+          </MultiSelect>
+        </div>
+
+        <label class="field field-inline" for="show-normal-subalerts">
+          <span class="field-text">
+            <span class="field-label">Show normal instances</span>
+            <span class="field-description">Include non-firing instances in the expanded details</span>
+          </span>
+          <ToggleSwitch
+            inputId="show-normal-subalerts"
+            :modelValue="showNormalSubalerts"
+            @update:modelValue="$emit('update:showNormalSubalerts', $event)"
+          />
+        </label>
+      </section>
+
+      <section class="drawer-group">
+        <h3 class="group-title">Appearance</h3>
+
+        <div class="field">
+          <span class="field-label">Theme</span>
+          <div class="segmented" role="radiogroup" aria-label="Theme">
+            <button
+              v-for="option in themeOptions"
+              :key="option.value"
+              :class="['segment', { active: theme === option.value }]"
+              role="radio"
+              :aria-checked="theme === option.value"
+              @click="$emit('update:theme', option.value)"
+            >
+              <i :class="option.icon"></i>
+              <span>{{ option.label }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Layout</span>
+          <div class="segmented" role="radiogroup" aria-label="Layout">
+            <button
+              v-for="option in viewOptions"
+              :key="option.value"
+              :class="['segment', { active: viewMode === option.value }]"
+              role="radio"
+              :aria-checked="viewMode === option.value"
+              @click="$emit('update:viewMode', option.value)"
+            >
+              <i :class="option.icon"></i>
+              <span>{{ option.label }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-row">
+            <label class="field-label" for="font-size">Text size</label>
+            <span class="field-value">{{ Math.round(fontSize * 50) }}%</span>
+          </div>
+          <input
+            id="font-size"
+            type="range"
             :value="fontSize"
             @input="$emit('update:fontSize', parseFloat(($event.target as HTMLInputElement).value))"
-            min="1" 
-            max="3" 
-            step="0.1" 
-            class="size-slider"
-            title="Adjust text size"
+            min="1"
+            max="3"
+            step="0.1"
+            class="slider"
           />
-          <i class="pi pi-search-plus"></i>
         </div>
-      </div>
+      </section>
 
-      <div class="drawer-section">
-        <h3 class="drawer-section-title">Sub-Alerts</h3>
-        <div class="switch-control">
-          <label for="show-normal-subalerts" class="switch-label">
-            <span>Show Normal State</span>
-            <InputSwitch 
-              id="show-normal-subalerts"
-              :modelValue="showNormalSubalerts"
-              @update:modelValue="$emit('update:showNormalSubalerts', $event)"
-            />
-          </label>
-        </div>
-      </div>
+      <section class="drawer-group">
+        <h3 class="group-title">Notifications</h3>
 
-      <div class="drawer-section">
-        <h3 class="drawer-section-title">Notifications</h3>
-        <div class="duration-control">
-          <div class="duration-label">
-            <span>Highlight Duration</span>
-            <span class="duration-value">{{ highlightDuration === 0 ? 'Off' : `${highlightDuration}s` }}</span>
+        <div class="field">
+          <div class="field-row">
+            <label class="field-label" for="highlight-duration">Highlight new alerts</label>
+            <span class="field-value">{{ highlightDuration === 0 ? 'Off' : `${highlightDuration}s` }}</span>
           </div>
-          <input 
-            type="range" 
+          <input
+            id="highlight-duration"
+            type="range"
             :value="highlightDuration"
             @input="$emit('update:highlightDuration', parseInt(($event.target as HTMLInputElement).value))"
-            min="0" 
-            max="300" 
-            step="5" 
-            class="duration-slider"
-            title="Highlight duration in seconds (0 = off)"
+            min="0"
+            max="300"
+            step="5"
+            class="slider"
           />
-        </div>        <div class="sound-control">
-          <label for="notification-sound" class="control-label">Notification Sound</label>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="notification-sound">Sound</label>
           <Select
-            id="notification-sound"
+            inputId="notification-sound"
             :modelValue="notificationSound"
             @update:modelValue="handleSoundChange"
             :options="soundOptions"
             optionLabel="label"
             optionValue="value"
             placeholder="Select a sound"
-            class="sound-select"
+            class="field-input"
           />
         </div>
-        <div class="volume-control">
-          <div class="duration-label">
-            <span>Volume</span>
-            <span class="duration-value">{{ Math.round(notificationVolume * 100) }}%</span>
+
+        <div class="field">
+          <div class="field-row">
+            <label class="field-label" for="notification-volume">Volume</label>
+            <span class="field-value">{{ Math.round(notificationVolume * 100) }}%</span>
           </div>
-          <input 
-            type="range" 
+          <input
+            id="notification-volume"
+            type="range"
             :value="notificationVolume"
             @input="$emit('update:notificationVolume', parseFloat(($event.target as HTMLInputElement).value))"
-            min="0" 
-            max="1" 
-            step="0.1" 
-            class="volume-slider"
-            title="Notification volume"
+            min="0"
+            max="1"
+            step="0.1"
+            class="slider"
           />
-        </div>      </div>
-
-      <div class="drawer-section">
-        <h3 class="drawer-section-title">Theme</h3>
-        <div class="theme-toggle">
-          <button 
-            :class="['toggle-btn', { active: theme === 'light' }]" 
-            @click="$emit('update:theme', 'light')"
-            title="Light Theme"
-          >
-            <i class="pi pi-sun"></i>
-            <span>Light</span>
-          </button>
-          <button 
-            :class="['toggle-btn', { active: theme === 'system' }]" 
-            @click="$emit('update:theme', 'system')"
-            title="System Theme"
-          >
-            <i class="pi pi-desktop"></i>
-            <span>System</span>
-          </button>
-          <button 
-            :class="['toggle-btn', { active: theme === 'dark' }]" 
-            @click="$emit('update:theme', 'dark')"
-            title="Dark Theme"
-          >
-            <i class="pi pi-moon"></i>
-            <span>Dark</span>
-          </button>
         </div>
-      </div>
+      </section>
 
-      <div class="drawer-section">
-        <h3 class="drawer-section-title">View Mode</h3>
-        <div class="view-toggle">
-          <button 
-            :class="['toggle-btn', { active: viewMode === 'compact' }]" 
-            @click="$emit('update:viewMode', 'compact')"
-            title="Compact View"
-          >
-            <i class="pi pi-list"></i>
-            <span>Compact</span>
-          </button>
-          <button 
-            :class="['toggle-btn', { active: viewMode === 'grid' }]" 
-            @click="$emit('update:viewMode', 'grid')"
-            title="Grid View"
-          >
-            <i class="pi pi-th-large"></i>
-            <span>Grid</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="drawer-section github-link-section">
-        <a 
-          href="https://github.com/mms-gianni/grafana-alerts-dashboard" 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          class="github-link"
-          title="View on GitHub"
-        >
-          <i class="pi pi-github"></i>
-          <span>View on GitHub</span>
-        </a>
-      </div>
-
+      <a
+        href="https://github.com/mms-gianni/grafana-alerts-dashboard"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="github-link"
+      >
+        <i class="pi pi-github"></i>
+        <span>View on GitHub</span>
+      </a>
     </div>
-  </Sidebar>
+  </Drawer>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import Sidebar from 'primevue/sidebar'
+import Drawer from 'primevue/drawer'
 import MultiSelect from 'primevue/multiselect'
-import InputSwitch from 'primevue/inputswitch'
+import ToggleSwitch from 'primevue/toggleswitch'
 import Select from 'primevue/select'
 
 interface Props {
@@ -257,13 +258,24 @@ const isVisible = computed({
 })
 
 const stateOptions = [
-  { label: 'Alerting', value: 'alerting', icon: 'pi pi-exclamation-triangle', color: '#f44336' },
-  { label: 'Pending', value: 'pending', icon: 'pi pi-clock', color: '#ff9800' },
-  { label: 'No Data', value: 'no_data', icon: 'pi pi-question-circle', color: '#2196f3' },
-  { label: 'Paused', value: 'paused', icon: 'pi pi-times-circle', color: '#9e9e9e' },
-  { label: 'Silenced', value: 'silenced', icon: 'pi pi-volume-off', color: '#757575' },
-  { label: 'OK', value: 'ok', icon: 'pi pi-check-circle', color: '#4caf50' },
+  { label: 'Firing', value: 'alerting', icon: 'pi pi-exclamation-triangle', color: 'var(--gf-red)' },
+  { label: 'Pending', value: 'pending', icon: 'pi pi-clock', color: 'var(--gf-orange)' },
+  { label: 'No data', value: 'no_data', icon: 'pi pi-question-circle', color: 'var(--gf-blue)' },
+  { label: 'Paused', value: 'paused', icon: 'pi pi-pause-circle', color: 'var(--gf-gray)' },
+  { label: 'Silenced', value: 'silenced', icon: 'pi pi-volume-off', color: 'var(--gf-gray)' },
+  { label: 'Normal', value: 'ok', icon: 'pi pi-check-circle', color: 'var(--gf-green)' },
 ]
+
+const themeOptions = [
+  { label: 'Dark', value: 'dark', icon: 'pi pi-moon' },
+  { label: 'Light', value: 'light', icon: 'pi pi-sun' },
+  { label: 'System', value: 'system', icon: 'pi pi-desktop' },
+] as const
+
+const viewOptions = [
+  { label: 'List', value: 'compact', icon: 'pi pi-list' },
+  { label: 'Grid', value: 'grid', icon: 'pi pi-th-large' },
+] as const
 
 const soundOptions = [
   { label: 'None', value: '' },
@@ -276,7 +288,7 @@ const soundOptions = [
 
 const handleSoundChange = (newSound: string) => {
   emit('update:notificationSound', newSound)
-  
+
   // Play preview of selected sound
   if (newSound) {
     const previewAudio = new Audio(`/${newSound}`)
@@ -289,650 +301,188 @@ const handleSoundChange = (newSound: string) => {
 </script>
 
 <style>
-.p-sidebar-header {
-  padding: 1.5rem !important;
-  margin-bottom: 1rem !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+/* Drawer is teleported to <body>, so these are global (tokens live on <html>) */
+.settings-drawer.p-drawer {
+  width: 400px;
+  max-width: 100vw;
+  background: var(--gf-panel);
+  color: var(--gf-text);
+  border-left: 1px solid var(--gf-border-weak);
+  box-shadow: var(--gf-shadow-overlay);
 }
 
-.p-multiselect-item , .p-multiselect-header {
-  padding: 0.25rem 0.5rem !important;
+.settings-drawer .settings-drawer-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--gf-border-weak);
+}
+
+.settings-drawer .p-drawer-content {
+  padding: 0;
 }
 </style>
 
 <style scoped>
+.drawer-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.drawer-title {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--gf-text);
+}
+
+.drawer-subtitle {
+  font-size: 12px;
+  color: var(--gf-text-secondary);
+}
+
 .drawer-content {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
-  padding: 1rem 0;
-  margin: 2rem;
+  min-height: 100%;
 }
 
-.drawer-section {
+.drawer-group {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  padding: 1.25rem;
+  border-bottom: 1px solid var(--gf-border-weak);
 }
 
-.drawer-section-title {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #aaa;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.group-title {
   margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gf-text);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.field-inline {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  cursor: pointer;
+}
+
+.field-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.field-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.field-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gf-text);
+}
+
+.field-description {
+  font-size: 12px;
+  color: var(--gf-text-secondary);
+}
+
+.field-value {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--gf-text-secondary);
+}
+
+.field-input {
+  width: 100%;
 }
 
 .filter-option {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.25rem 0;
 }
 
 .filter-option i {
-  font-size: 1rem;
+  font-size: 13px;
 }
 
-.state-filter {  
-  width: 100%;
-}
-
-.instance-filter {
-  width: 100%;
-}
-
-.size-control {
+/* Grafana RadioButtonGroup */
+.segmented {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
+  padding: 2px;
+  gap: 2px;
+  border: 1px solid var(--gf-border-medium);
+  border-radius: var(--gf-radius-sm);
+  background: var(--gf-canvas);
 }
 
-.size-control i {
-  color: #aaa;
-  font-size: 1rem;
-}
-
-.size-slider {
+.segment {
   flex: 1;
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.2);
-  outline: none;
-  cursor: pointer;
-}
-
-.size-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #64b5f6;
-  cursor: pointer;
-}
-
-.size-slider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #64b5f6;
-  cursor: pointer;
-  border: none;
-}
-
-.view-toggle {
-  display: flex;
-  gap: 0.5rem;
-  width: 100%;
-}
-
-.theme-toggle {
-  display: flex;
-  gap: 0.35rem;
-  width: 100%;
-}
-
-.toggle-btn {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.05);
-  border: none;
-  color: #aaa;
-  cursor: pointer;
-  padding: 0.75rem 0.5rem;
-  border-radius: 6px;
-  transition: all 0.2s;
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.25rem;
-  font-size: 0.75rem;
-  min-width: 0;
-}
-
-.toggle-btn i {
-  font-size: 1.2rem;
-}
-
-.toggle-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-}
-
-.toggle-btn.active {
-  background: rgba(100, 181, 246, 0.3);
-  color: #64b5f6;
-  border: 1px solid rgba(100, 181, 246, 0.5);
-}
-
-.switch-control {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.switch-label {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-.switch-label span {
-  color: #ccc;
-}
-
-.duration-control {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.duration-label {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.9rem;
-  color: #ccc;
-}
-
-.duration-value {
-  font-weight: 600;
-  color: #64b5f6;
-  font-size: 0.85rem;
-}
-
-.duration-slider {
-  width: 100%;
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.2);
-  outline: none;
-  cursor: pointer;
-}
-
-.duration-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #64b5f6;
-  cursor: pointer;
-}
-
-.duration-slider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #64b5f6;
-  cursor: pointer;
+  gap: 0.375rem;
+  height: 28px;
+  padding: 0 0.5rem;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gf-text-secondary);
+  background: transparent;
   border: none;
+  border-radius: var(--gf-radius-sm);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
 }
 
-.sound-control {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+.segment:hover {
+  color: var(--gf-text);
 }
 
-.control-label {
-  font-size: 0.9rem;
-  color: #ccc;
+.segment.active {
+  color: var(--gf-text);
+  background: var(--gf-panel-secondary);
+  box-shadow: 0 0 0 1px var(--gf-border-weak);
 }
 
-.sound-select {
+.segment:focus-visible {
+  outline: 2px solid var(--gf-primary);
+  outline-offset: 1px;
+}
+
+.segment .pi {
+  font-size: 12px;
+}
+
+.slider {
   width: 100%;
-  padding: 0.5rem;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-  color: #fff;
-  font-size: 0.9rem;
+  accent-color: var(--gf-primary);
   cursor: pointer;
-  outline: none;
-}
-
-.sound-select:hover {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.sound-select option {
-  background: #1e1e1e;
-  color: #fff;
-}
-
-.volume-control {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.volume-slider {
-  width: 100%;
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.2);
-  outline: none;
-  cursor: pointer;
-}
-
-.volume-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #64b5f6;
-  cursor: pointer;
-}
-
-.volume-slider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #64b5f6;
-  cursor: pointer;
-  border: none;
-}
-
-.github-link-section {
-  margin-top: auto;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .github-link {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  color: #ccc;
+  margin-top: auto;
+  padding: 1rem 1.25rem;
+  font-size: 13px;
+  color: var(--gf-text-secondary);
   text-decoration: none;
-  font-size: 0.9rem;
-  transition: all 0.2s;
 }
 
 .github-link:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.github-link i {
-  font-size: 1.25rem;
-}
-</style>
-<style>
-/* Dark theme sidebar styles - non-scoped for portaled sidebar */
-body:has(.theme-dark) .p-sidebar,
-body:has(.theme-dark) .p-drawer {
-  --p-drawer-background: #0f0f1a !important;
-  --p-sidebar-background: #0f0f1a !important;
-  --p-overlay-modal-background: #0f0f1a !important;
-  --p-drawer-border-color: rgba(255, 255, 255, 0.1) !important;
-  --p-overlay-modal-border-color: rgba(255, 255, 255, 0.1) !important;
-  --p-drawer-color: #ffffff !important;
-  --p-overlay-modal-color: #ffffff !important;
-  background: #0f0f1a !important;
-  border-left: 1px solid rgba(255, 255, 255, 0.1) !important;
-  color: #ffffff !important;
-}
-
-body:has(.theme-dark) .p-sidebar-header {
-  background: #0f0f1a !important;
-  color: #fff !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
-}
-
-body:has(.theme-dark) .p-sidebar-header-content {
-  color: #fff !important;
-}
-
-body:has(.theme-dark) .p-sidebar-close-icon {
-  color: #fff !important;
-}
-
-/* Dark mode form components */
-body:has(.theme-dark) .p-multiselect,
-body:has(.theme-dark) .p-select,
-body:has(.theme-dark) .p-inputtext {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  color: #fff !important;
-}
-
-body:has(.theme-dark) .p-multiselect:hover,
-body:has(.theme-dark) .p-select:hover,
-body:has(.theme-dark) .p-inputtext:hover {
-  background: rgba(255, 255, 255, 0.15) !important;
-  border-color: rgba(255, 255, 255, 0.3) !important;
-}
-
-body:has(.theme-dark) .p-multiselect-overlay,
-body:has(.theme-dark) .p-select-overlay,
-body:has(.theme-dark) .p-multiselect-panel {
-  background: #1a1a2e !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  color: #fff !important;
-}
-
-body:has(.theme-dark) .p-overlay,
-body:has(.theme-dark) .p-component-overlay {
-  background: #1a1a2e !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-}
-
-body:has(.theme-dark) .p-multiselect-list,
-body:has(.theme-dark) .p-select-list {
-  background: #1a1a2e !important;
-  color: #fff !important;
-}
-
-body:has(.theme-dark) .p-multiselect-header {
-  background: #1a1a2e !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
-  color: #fff !important;
-}
-
-body:has(.theme-dark) .p-multiselect-filter {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  color: #fff !important;
-}
-
-body:has(.theme-dark) .p-multiselect-item,
-body:has(.theme-dark) .p-select-option {
-  color: #fff !important;
-  background: transparent !important;
-}
-
-body:has(.theme-dark) .p-multiselect-option,
-body:has(.theme-dark) .p-select-item {
-  color: #fff !important;
-  background: transparent !important;
-}
-
-body:has(.theme-dark) .p-multiselect-item:hover,
-body:has(.theme-dark) .p-select-option:hover {
-  background: rgba(255, 255, 255, 0.15) !important;
-}
-
-body:has(.theme-dark) .p-multiselect-option:hover,
-body:has(.theme-dark) .p-select-item:hover {
-  background: rgba(255, 255, 255, 0.15) !important;
-}
-
-body:has(.theme-dark) .p-multiselect-item.p-focus,
-body:has(.theme-dark) .p-select-option.p-focus {
-  background: rgba(100, 181, 246, 0.25) !important;
-}
-
-body:has(.theme-dark) .p-multiselect-option.p-focus,
-body:has(.theme-dark) .p-select-item.p-focus {
-  background: rgba(100, 181, 246, 0.25) !important;
-}
-
-body:has(.theme-dark) .p-multiselect-label,
-body:has(.theme-dark) .p-select-label {
-  color: #fff !important;
-}
-
-body:has(.theme-dark) .p-multiselect-dropdown,
-body:has(.theme-dark) .p-select-dropdown {
-  color: #fff !important;
-}
-
-body:has(.theme-dark) .p-checkbox-box {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
-}
-
-body:has(.theme-dark) .p-checkbox-box:hover {
-  background: rgba(255, 255, 255, 0.15) !important;
-  border-color: rgba(255, 255, 255, 0.4) !important;
-}
-
-body:has(.theme-dark) .p-checkbox-box.p-checked {
-  background: #64b5f6 !important;
-  border-color: #64b5f6 !important;
-}
-
-/* Light theme form components */
-body:has(.theme-light) .p-sidebar,
-body:has(.theme-light) .p-drawer {
-  --p-drawer-background: #ffffff !important;
-  --p-sidebar-background: #ffffff !important;
-  --p-overlay-modal-background: #ffffff !important;
-  --p-drawer-border-color: rgba(0, 0, 0, 0.12) !important;
-  --p-overlay-modal-border-color: rgba(0, 0, 0, 0.12) !important;
-  --p-drawer-color: #1a1a1a !important;
-  --p-overlay-modal-color: #1a1a1a !important;
-  background: #ffffff !important;
-  border-left: 1px solid rgba(0, 0, 0, 0.12) !important;
-  color: #1a1a1a !important;
-}
-
-body:has(.theme-light) .p-sidebar-header {
-  background: #f8f9fa !important;
-  color: #1a1a1a !important;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1) !important;
-}
-
-body:has(.theme-light) .p-sidebar-header-content {
-  color: #1a1a1a !important;
-}
-
-body:has(.theme-light) .p-sidebar-close-icon {
-  color: #1a1a1a !important;
-}
-
-/* Light mode form components */
-body:has(.theme-light) .p-multiselect,
-body:has(.theme-light) .p-select,
-body:has(.theme-light) .p-inputtext {
-  background: #ffffff !important;
-  border: 1px solid #d1d5db !important;
-  color: #1a1a1a !important;
-}
-
-body:has(.theme-light) .p-multiselect:hover,
-body:has(.theme-light) .p-select:hover,
-body:has(.theme-light) .p-inputtext:hover {
-  border-color: #9ca3af !important;
-  background: #ededed !important;
-}
-
-b
-
-body:has(.theme-light) .p-overlay,
-body:has(.theme-light) .p-component-overlay {
-  background: #ffffff !important;
-  border: 1px solid #d1d5db !important;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
-}
-
-body:has(.theme-light) .p-multiselect-list,
-body:has(.theme-light) .p-select-list {
-  background: #ffffff !important;
-  color: #1a1a1a !important;
-}ody:has(.theme-light) .p-multiselect-overlay,
-body:has(.theme-light) .p-select-overlay,
-body:has(.theme-light) .p-multiselect-panel {
-  background: #ffffff !important;
-  border: 1px solid #d1d5db !important;
-  color: #1a1a1a !important;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
-}
-
-body:has(.theme-light) .p-multiselect-header {
-  background: #f9fafb !important;
-  background: transparent !important;
-}
-
-body:has(.theme-light) .p-multiselect-option,
-body:has(.theme-light) .p-select-item {
-  color: #1a1a1a !important;
-  background: transparent !important;
-  border-bottom: 1px solid #e5e7eb !important;
-  color: #1a1a1a !important;
-}
-
-body:has(.theme-light) .p-multiselect-filter {
-  background: #ffffff !important;
-  border: 1px solid #d1d5db !important;
-  color: #1a1a1a !important;
-}
-
-body:has(.theme-light) .p-multiselect-item,
-body:has(.theme-light) .p-select-option {
-  color: #1a1a1a !important;
-}
-
-body:has(.theme-light) .p-multiselect-item:hover,
-body:has(.theme-light) .p-select-option:hover {
-  background: #e5e7eb !important;
-}
-
-body:has(.theme-light) .p-multiselect-option:hover,
-body:has(.theme-light) .p-select-item:hover {
-  background: #e5e7eb !important;
-}
-
-body:has(.theme-light) .p-multiselect-item.p-focus,
-body:has(.theme-light) .p-select-option.p-focus {
-  background: #dbeafe !important;
-}
-
-body:has(.theme-light) .p-multiselect-option.p-focus,
-body:has(.theme-light) .p-select-item.p-focus {
-  background: #dbeafe !important;
-}
-
-body:has(.theme-light) .p-multiselect-label,
-body:has(.theme-light) .p-select-label {
-  color: #1a1a1a !important;
-}
-
-body:has(.theme-light) .p-multiselect-dropdown,
-body:has(.theme-light) .p-select-dropdown {
-  color: #1a1a1a !important;
-}
-
-body:has(.theme-light) .p-checkbox-box,
-body:has(.theme-light) .p-toggleswitch-input {
-  background: #4c7bb1 !important;
-  border-color: #4c7bb1 !important;
-}
-
-body:has(.theme-light) .p-checkbox-box:hover,
-body:has(.theme-light) .p-toggleswitch-input:hover {
-  background: #f9fafb !important;
-  border-color: #9ca3af !important;
-}
-
-body:has(.theme-light) .p-checkbox-box.p-checked {
-  background: #0a4a93 !important;
-  border-color: #0a4a93 !important;
-}
-
-body:has(.theme-light) .drawer-content {
-  color: #1a1a1a !important;
-}
-
-body:has(.theme-light) .drawer-section-title {
-  color: #2d2d2d !important;
-  font-weight: 700 !important;
-}
-
-body:has(.theme-light) .switch-label span,
-body:has(.theme-light) .control-label,
-body:has(.theme-light) .duration-label {
-  color: #1a1a1a !important;
-}
-
-body:has(.theme-light) .duration-value {
-  color: #1565c0 !important;
-  font-weight: 700 !important;
-}
-
-body:has(.theme-light) .size-control i {
-  color: #555 !important;
-}
-
-body:has(.theme-light) .sound-select {
-  background: rgba(0, 0, 0, 0.08) !important;
-  border: 1px solid rgba(0, 0, 0, 0.25) !important;
-  color: #1a1a1a !important;
-}
-
-body:has(.theme-light) .sound-select:hover {
-  background: rgba(0, 0, 0, 0.12) !important;
-}
-
-body:has(.theme-light) .sound-select option {
-  background: #fff !important;
-  color: #1a1a1a !important;
-}
-
-body:has(.theme-light) .github-link {
-  background: rgba(0, 0, 0, 0.08) !important;
-  border: 1px solid rgba(0, 0, 0, 0.15) !important;
-  color: #1a1a1a !important;
-}
-
-body:has(.theme-light) .github-link:hover {
-  background: rgba(0, 0, 0, 0.14) !important;
-  color: #000 !important;
-  border-color: rgba(0, 0, 0, 0.25) !important;
-}
-
-body:has(.theme-light) .github-link-section {
-  border-top: 1px solid rgba(0, 0, 0, 0.12) !important;
-}
-
-body:has(.theme-light) .toggle-btn {
-  background: rgba(0, 0, 0, 0.05) !important;
-  color: #555 !important;
-  border: 1px solid transparent !important;
-}
-
-body:has(.theme-light) .toggle-btn:hover {
-  background: rgba(0, 0, 0, 0.1) !important;
-  color: #1a1a1a !important;
-}
-
-body:has(.theme-light) .toggle-btn.active {
-  background: rgba(100, 181, 246, 0.15) !important;
-  color: #1565c0 !important;
-  border: 1px solid rgba(100, 181, 246, 0.4) !important;
+  color: var(--gf-text);
 }
 </style>

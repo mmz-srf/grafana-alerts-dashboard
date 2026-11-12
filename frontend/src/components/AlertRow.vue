@@ -1,67 +1,88 @@
 <template>
-  <div>
-    <div 
-      :class="['alert-row', `alert-${alert.state}`, { 'alert-silenced': alert.isSilenced, 'has-subalerts': alert.alerts && alert.alerts.length > 0, 'new-alert': isNew }]"
+  <div
+    :class="[
+      'alert-item',
+      `state-${alert.state}`,
+      { 'is-silenced': alert.isSilenced, 'is-new': isNew, 'is-expanded': expanded }
+    ]"
+  >
+    <div
+      :class="['alert-row', { 'is-clickable': hasSubAlerts, 'no-actions': isWallDisplayMode }]"
+      :role="hasSubAlerts ? 'button' : undefined"
+      :tabindex="hasSubAlerts ? 0 : undefined"
+      :aria-expanded="hasSubAlerts ? expanded : undefined"
       @click="toggleAccordion"
+      @keydown.enter.space.prevent="toggleAccordion"
     >
-      <div class="alert-icon" :style="{ fontSize: `${fontSize}rem` }">
-        <i :class="getStateIcon(alert.state)"></i>
-      </div>
-      <div class="alert-name" :style="{ fontSize: `${fontSize}rem` }">
-        {{ alert.name }}
-        <span v-if="alert.instanceName && alert.instanceName !== 'default'" class="instance-badge">
+      <div class="cell-name" :style="{ fontSize: `${fontSize}rem` }">
+        <i
+          :class="['chevron', 'pi', expanded ? 'pi-angle-down' : 'pi-angle-right', { 'is-hidden': !hasSubAlerts }]"
+        ></i>
+        <i :class="['state-icon', getStateIcon(alert.state)]"></i>
+        <span class="name-text" :title="alert.name">{{ alert.name }}</span>
+        <span v-if="alert.instanceName && alert.instanceName !== 'default'" class="gf-instance">
           {{ alert.instanceName }}
         </span>
+        <i v-if="alert.isSilenced" class="pi pi-volume-off silenced-icon" title="Silenced"></i>
       </div>
-      <div class="alert-group">
+
+      <div class="cell-group" :title="alert.ruleGroup">
         {{ alert.ruleGroup }}
       </div>
-      <div class="alert-totals">
-        <span v-if="alert.totals?.alerting && alert.totals.alerting >= 1" class="total-chip alerting-chip">
-          {{ alert.totals.alerting }}
-        </span>
-        <span v-if="alert.totals?.normal && alert.totals.normal >= 1" class="total-chip normal-chip">
-          {{ alert.totals.normal }}
+
+      <div class="cell-totals">
+        <span
+          v-if="alert.totals?.alerting && alert.totals.alerting >= 1"
+          class="gf-count is-firing"
+          title="Firing instances"
+        >{{ alert.totals.alerting }}</span>
+        <span
+          v-if="alert.totals?.normal && alert.totals.normal >= 1"
+          class="gf-count is-normal"
+          title="Normal instances"
+        >{{ alert.totals.normal }}</span>
+      </div>
+
+      <div class="cell-labels">
+        <span v-for="(value, key) in alert.labels" :key="key" class="gf-label">
+          <span class="gf-label-key">{{ key }}</span><span class="gf-label-value">{{ value }}</span>
         </span>
       </div>
-      <div class="alert-labels">
-        <span v-for="(value, key) in alert.labels" :key="key" class="label-tag">
-          {{ key }}: {{ value }}
-        </span>
+
+      <div class="cell-state">
+        <span class="state-text">{{ getStateLabel(alert.state) }}</span>
+        <span class="state-duration">{{ getDuration(alert.newStateDate) }}</span>
       </div>
-      <div class="alert-duration">
-        {{ getDuration(alert.newStateDate) }}
-      </div>
-      <div v-if="!isWallDisplayMode" class="alert-actions">
-        <a :href="alert.url" target="_blank" class="view-link" title="View in Grafana" @click.stop>
+
+      <div v-if="!isWallDisplayMode" class="cell-actions">
+        <a
+          :href="alert.url"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="gf-btn row-link"
+          title="View alert rule in Grafana"
+          @click.stop
+        >
           <i class="pi pi-external-link"></i>
         </a>
       </div>
     </div>
-    
-    <AlertTimeline 
-      v-if="expanded" 
-      :alert-id="alert.id"
-      :instance-name="alert.instanceName"
-    />
-    
-    
-    <SilenceAccordion
-      v-if="expanded && alert.isSilencedBy && alert.isSilencedBy.length > 0"
-      :silence-ids="alert.isSilencedBy"
-      :instance-name="alert.instanceName || 'default'"
-      class="silence-container"
-    />
-    <div v-if="expanded && filteredSubAlerts.length > 0" class="sub-alerts-container">
-      <SubAlertAccordion 
+
+    <div v-if="expanded" class="alert-details">
+      <AlertTimeline
+        :alert-id="alert.id"
+        :instance-name="alert.instanceName"
+      />
+
+      <SilenceAccordion
+        v-if="alert.isSilencedBy && alert.isSilencedBy.length > 0"
+        :silence-ids="alert.isSilencedBy"
+        :instance-name="alert.instanceName || 'default'"
+      />
+
+      <SubAlertAccordion
+        v-if="filteredSubAlerts.length > 0"
         :sub-alerts="filteredSubAlerts"
-        value-prefix="Value: "
-        content-class="sub-alert-details"
-        section-class="detail-section"
-        annotation-class="annotation-row"
-        annotation-value-class="annotation-value"
-        detail-label-class="detail-label"
-        detail-value-class="detail-value"
       />
     </div>
   </div>
@@ -97,306 +118,224 @@ watch(() => props.isNew, (newVal) => {
 
 const expanded = ref(false)
 
-const { getStateIcon, getDuration, useFilteredSubAlerts } = useAlert()
+const { getStateIcon, getStateLabel, getDuration, useFilteredSubAlerts } = useAlert()
 
 const filteredSubAlerts = useFilteredSubAlerts(
   computed(() => props.alert),
   toRef(props, 'showNormalSubalerts')
 )
 
+const hasSubAlerts = computed(() => !!props.alert.alerts && props.alert.alerts.length > 0)
+
 const toggleAccordion = () => {
-  if (props.alert.alerts && props.alert.alerts.length > 0) {
+  if (hasSubAlerts.value) {
     expanded.value = !expanded.value
   }
 }
 </script>
 
 <style scoped>
-.alert-row {
-  display: grid;
-  grid-template-columns: 50px 1fr 200px 80px 300px 100px 60px;
-  align-items: center;
-  padding: 0.75rem 1.5rem;
-  background: rgba(255, 255, 255, 0.03);
-  border-left: 4px solid;
-  margin-bottom: 1px;
-  transition: background 0.2s, transform 0.1s;
-  gap: 1rem;
+.alert-item {
+  border-bottom: 1px solid var(--gf-border-weak);
 }
 
-/* Remove actions column in kiosk mode */
-.alert-row:has(.alert-actions:empty),
-.alert-row:not(:has(.alert-actions)) {
-  grid-template-columns: 50px 1fr 200px 80px 300px 100px;
+.alert-item:last-child {
+  border-bottom: none;
+}
+
+.alert-row {
+  display: grid;
+  grid-template-columns: var(--cols);
+  gap: 1rem;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  /* State colour bar on the left edge */
+  box-shadow: inset 3px 0 0 var(--state-color);
+  padding-left: calc(1rem + 3px);
+  transition: background-color 0.15s;
 }
 
 .alert-row:hover {
-  background: rgba(255, 255, 255, 0.06);
-  transform: translateX(2px);
+  background: var(--gf-hover);
 }
 
-.alert-row.has-subalerts {
+.alert-row.is-clickable {
   cursor: pointer;
 }
 
-.alert-alerting {
-  border-left-color: #f44336;
+.alert-row:focus-visible {
+  outline: 2px solid var(--gf-primary);
+  outline-offset: -2px;
 }
 
-.alert-pending {
-  border-left-color: #ff9800;
+.is-expanded .alert-row {
+  background: var(--gf-active);
 }
 
-.alert-ok {
-  border-left-color: #4caf50;
+/* Firing rows get a faint wash of red, like Grafana's alert list */
+.state-alerting:not(.is-silenced) .alert-row {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gf-red) 12%, transparent), transparent 60%);
 }
 
-.alert-paused {
-  border-left-color: #9e9e9e;
+.state-alerting:not(.is-silenced) .alert-row:hover {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gf-red) 18%, transparent), var(--gf-hover) 60%);
 }
 
-.alert-no_data {
-  border-left-color: #2196f3;
-}
-
-.alert-silenced {
+.is-silenced .alert-row > * {
   opacity: 0.5;
 }
 
-.new-alert {
-  position: relative;
-  animation: flashAlert 0.5s ease-in-out infinite;
-  border-left: 4px solid #ffc107 !important;
+.alert-item.is-new .alert-row {
+  background-image: none;
+  animation: gf-attention 1.2s ease-in-out infinite;
+  box-shadow: inset 3px 0 0 var(--gf-yellow);
 }
 
-@keyframes flashAlert {
-  0%, 100% {
-    box-shadow: 0 0 0 rgba(255, 193, 7, 0);
-    background: rgba(255, 193, 7, 0);
-  }
-  50% {
-    box-shadow: 0 0 20px rgba(255, 193, 7, 0.8), inset 0 0 20px rgba(255, 193, 7, 0.3);
-    background: rgba(255, 193, 7, 0.15);
-  }
-}
-
-.alert-silenced .alert-name,
-.alert-silenced .alert-group,
-.alert-silenced .alert-labels,
-.alert-silenced .alert-duration {
-  color: #9e9e9e !important;
-}
-
-.alert-silenced .alert-icon i {
-  color: #757575 !important;
-}
-
-.alert-icon {
+/* ---- Cells ---- */
+.cell-name {
   display: flex;
   align-items: center;
-  justify-content: center;
-}
-
-.alert-icon i {
-  font-size: inherit;
-}
-
-.alert-alerting .alert-icon {
-  color: #f44336;
-}
-
-.alert-pending .alert-icon {
-  color: #ff9800;
-}
-
-.alert-ok .alert-icon {
-  color: #4caf50;
-}
-
-.alert-paused .alert-icon {
-  color: #9e9e9e;
-}
-
-.alert-no_data .alert-icon {
-  color: #2196f3;
-}
-
-.alert-totals {
-  display: flex;
-  gap: 0.25rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.alert-name {
+  gap: 0.4em;
+  min-width: 0;
   font-weight: 500;
+  line-height: 1.25;
+  color: var(--gf-text);
+}
+
+.chevron {
+  font-size: 0.5em;
+  width: 1em;
+  flex-shrink: 0;
+  color: var(--gf-text-secondary);
+}
+
+.chevron.is-hidden {
+  visibility: hidden;
+}
+
+.state-icon {
+  font-size: 0.75em;
+  flex-shrink: 0;
+  color: var(--state-color);
+  margin-right: 0.15em;
+}
+
+.name-text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  min-width: 0;
 }
 
-.instance-badge {
-  display: inline-block;
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.65rem;
-  font-weight: 600;
-  background: rgba(156, 39, 176, 0.2);
-  color: #ce93d8;
-  border: 1px solid rgba(156, 39, 176, 0.3);
-  white-space: nowrap;
+.silenced-icon {
+  font-size: 0.5em;
+  color: var(--gf-text-secondary);
   flex-shrink: 0;
 }
 
-.alert-group {
-  font-size: 0.9rem;
-  color: #aaa;
+.cell-group {
+  font-size: 14px;
+  color: var(--gf-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.alert-labels {
+.cell-totals {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cell-labels {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
+  min-width: 0;
+  max-height: 3.5em;
   overflow: hidden;
 }
 
-.label-tag {
-  display: inline-block;
-  padding: 0.2rem 0.5rem;
-  border-radius: 8px;
-  font-size: 0.65rem;
-  font-weight: 600;
-  background: rgba(100, 181, 246, 0.2);
-  color: #64b5f6;
-  border: 1px solid rgba(100, 181, 246, 0.3);
+.cell-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.125rem;
+  line-height: 1.2;
   white-space: nowrap;
 }
 
-.total-chip {
-  display: inline-block;
-  padding: 0.2rem 0.5rem;
-  border-radius: 8px;
-  font-size: 0.65rem;
-  font-weight: 600;
-  border: 1px solid;
-  white-space: nowrap;
+.state-text {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--state-color);
 }
 
-.alerting-chip {
-  background: rgba(244, 67, 54, 0.2);
-  color: #f44336;
-  border-color: rgba(244, 67, 54, 0.4);
+.state-duration {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--gf-text);
 }
 
-.normal-chip {
-  background: rgba(76, 175, 80, 0.2);
-  color: #4caf50;
-  border-color: rgba(76, 175, 80, 0.4);
+.state-alerting .state-duration,
+.state-pending .state-duration {
+  color: var(--state-color);
+  font-weight: 500;
 }
 
-.alert-duration {
-  font-size: 0.9rem;
-  color: #ccc;
-  text-align: right;
-}
-
-.alert-actions {
+.cell-actions {
   display: flex;
-  justify-content: center;
-  gap: 0.5rem;
+  justify-content: flex-end;
 }
 
-.view-link {
-  color: #64b5f6;
-  text-decoration: none;
-  font-size: 1.2rem;
-  transition: color 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.row-link {
+  padding: 0;
   width: 32px;
-  height: 32px;
-  border-radius: 50%;
+  text-decoration: none;
+  background: transparent;
+  border-color: transparent;
 }
 
-.view-link:hover {
-  color: #90caf9;
-  background: rgba(100, 181, 246, 0.1);
+.row-link:hover {
+  color: var(--gf-primary-text) !important;
 }
 
-.sub-alerts-container {
-  background: rgba(0, 0, 0, 0.05);
-  padding: 1rem;
-  margin-bottom: 1px;
+.row-link .pi {
+  font-size: 13px;
 }
 
-.silence-container {
-  background: rgba(0, 0, 0, 0.2);
-  padding: 1rem;
-  margin-bottom: 1px;
-}
-
-.sub-alert-details {
+/* ---- Expanded details ---- */
+.alert-details {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding: 0.5rem 0;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem 1rem calc(1rem + 3px + 2.25rem);
+  background: var(--gf-canvas);
+  border-top: 1px solid var(--gf-border-weak);
+  box-shadow: inset 3px 0 0 var(--state-color);
 }
 
-.detail-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.detail-section h4 {
-  margin: 0;
-  font-size: 0.85rem;
-  color: #aaa;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
+/* ---- Responsive ---- */
 @media (max-width: 1024px) {
-  .alert-row {
-    grid-template-columns: 40px 1fr 80px 80px 50px;
-  }
-  
-  .alert-group,
-  .alert-labels {
+  .cell-group,
+  .cell-labels {
     display: none;
   }
 }
 
 @media (max-width: 768px) {
   .alert-row {
-    grid-template-columns: 40px 1fr 50px;
-    padding: 0.5rem 1rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
   }
-  
-  .alert-totals,
-  .alert-duration {
+
+  .cell-totals,
+  .cell-state {
     display: none;
   }
-}
 
-</style>
-<style>
-.p-accordionheader {
-  background-color: transparent !important;
-  color: inherit !important;
-}
-.p-accordionheader:hover {
-  background-color: rgba(255, 255, 255, 0.05) !important;
-}
-
-.p-accordioncontent-content {
-  background-color: transparent !important;
+  .alert-details {
+    padding-left: 1rem;
+  }
 }
 </style>
