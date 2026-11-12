@@ -177,7 +177,7 @@
             :options="soundOptions"
             optionLabel="label"
             optionValue="value"
-            placeholder="Select a sound"
+            placeholder="None"
             class="field-input"
           />
         </div>

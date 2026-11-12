@@ -14,7 +14,7 @@
       @click="toggleAccordion"
       @keydown.enter.space.prevent="toggleAccordion"
     >
-      <div class="cell-name" :style="{ fontSize: `${fontSize}rem` }">
+      <div class="cell-name" :style="{ '--fs': fontSize }">
         <i
           :class="['chevron', 'pi', expanded ? 'pi-angle-down' : 'pi-angle-right', { 'is-hidden': !hasSubAlerts }]"
         ></i>
@@ -197,13 +197,14 @@ const toggleAccordion = () => {
   align-items: center;
   gap: 0.4em;
   min-width: 0;
+  font-size: calc(var(--fs, 2) * 1rem);
   font-weight: 500;
   line-height: 1.25;
   color: var(--gf-text);
 }
 
 .chevron {
-  font-size: 0.5em;
+  font-size: max(0.5em, 12px);
   width: 1em;
   flex-shrink: 0;
   color: var(--gf-text-secondary);
@@ -228,7 +229,7 @@ const toggleAccordion = () => {
 }
 
 .silenced-icon {
-  font-size: 0.5em;
+  font-size: max(0.5em, 12px);
   color: var(--gf-text-secondary);
   flex-shrink: 0;
 }
@@ -324,18 +325,27 @@ const toggleAccordion = () => {
 }
 
 @media (max-width: 768px) {
-  .alert-row {
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
+  .cell-totals {
+    display: none;
   }
 
-  .cell-totals,
-  .cell-state {
-    display: none;
+  /* Keep the user's text size but stop names collapsing to a single word */
+  .cell-name {
+    font-size: min(calc(var(--fs, 2) * 1rem), 1.375rem);
   }
 
   .alert-details {
     padding-left: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .cell-actions {
+    display: none;
+  }
+
+  .cell-name .gf-instance {
+    display: none;
   }
 }
 </style>

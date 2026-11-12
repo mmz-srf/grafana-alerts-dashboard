@@ -873,12 +873,13 @@ onUnmounted(() => {
 
 /* ---------- Compact table ---------- */
 .alert-table {
-  --cols: minmax(0, 1fr) minmax(0, 220px) 120px minmax(0, 360px) 170px 44px;
+  /* Proportional columns so the alert name keeps most of the width at any size */
+  --cols: minmax(0, 2.2fr) minmax(0, 1fr) 110px minmax(0, 1.4fr) 140px 44px;
   overflow: hidden;
 }
 
 .alert-table.no-actions {
-  --cols: minmax(0, 1fr) minmax(0, 220px) 120px minmax(0, 360px) 170px;
+  --cols: minmax(0, 2.2fr) minmax(0, 1fr) 110px minmax(0, 1.4fr) 140px;
 }
 
 .table-head {
@@ -942,16 +943,22 @@ onUnmounted(() => {
   .topbar {
     height: auto;
     flex-wrap: wrap;
+    gap: 0.5rem;
     padding: 0.5rem 1rem;
   }
 
+  /* Brand + live/buttons on the first line, full-width search below */
   .topbar-right {
-    flex-wrap: wrap;
-    width: 100%;
+    display: contents;
+  }
+
+  .brand {
+    flex: 1;
   }
 
   .search-box {
-    flex: 1;
+    order: 1;
+    flex: 1 0 100%;
     width: auto;
   }
 
@@ -959,26 +966,45 @@ onUnmounted(() => {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .stat-panel {
+    min-height: 76px;
+  }
+
   .status-panel {
     grid-column: 1 / -1;
   }
 
-  .alert-table,
-  .alert-table.no-actions {
-    --cols: minmax(0, 1fr) 44px;
+  .alert-table {
+    --cols: minmax(0, 1fr) 96px 44px;
   }
 
   .alert-table.no-actions {
-    --cols: minmax(0, 1fr);
+    --cols: minmax(0, 1fr) 96px;
   }
 
-  .head-totals,
-  .head-state {
+  .head-totals {
     display: none;
   }
 
   .alerts-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .crumb-muted,
+  .crumb-sep,
+  .live-time {
+    display: none;
+  }
+
+  .alert-table,
+  .alert-table.no-actions {
+    --cols: minmax(0, 1fr) 84px;
+  }
+
+  .head-actions {
+    display: none;
   }
 }
 </style>
