@@ -33,10 +33,22 @@ export function useAlert() {
       alerting: 'pi pi-exclamation-triangle',
       pending: 'pi pi-clock',
       ok: 'pi pi-check-circle',
-      paused: 'pi pi-times-circle',
+      paused: 'pi pi-pause-circle',
       no_data: 'pi pi-question-circle',
     }
     return icons[state] || 'pi pi-info-circle'
+  }
+
+  // Grafana's wording for alert states
+  const getStateLabel = (state: string): string => {
+    const labels: Record<string, string> = {
+      alerting: 'Firing',
+      pending: 'Pending',
+      ok: 'Normal',
+      paused: 'Paused',
+      no_data: 'No data',
+    }
+    return labels[state] || state
   }
 
   const formatDate = (dateString: string): string => {
@@ -74,6 +86,7 @@ export function useAlert() {
 
   return {
     getStateIcon,
+    getStateLabel,
     formatDate,
     getDuration,
     useFilteredSubAlerts
